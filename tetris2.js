@@ -20,6 +20,20 @@ var gameBoard = {
         this.CELL = 25;
         this.ctx = this.canvas.getContext("2d");
         this.m = new Array(22).fill(0).map(() => new Array(12).fill(0));
+        //console.log(this.zerom[0]);
+        //this.m = this.zerom.map((c, i) => { if (i == 0 || i == 21) return new Array(12).fill(1); return [1, this.zerom[0].slice(1, 10).from(), 1]; });
+        
+        var x, y;
+        for (x = 0; x < 12; x++) {
+            for (y = 0; y < 22; y++) {
+                if (x == 0 || x == 11 || y == 0 || y == 21) {
+                    this.m[y][x] = 1;
+                }
+            }
+        }
+        
+        
+        console.log(this.m)
         // alustetaan m niin, että kaikki reunasolut = 1 ja muut 0.
         this.interval = setInterval(sinkBlock, this.gameSpeed);
         window.addEventListener('keydown', keyHandler, false);
@@ -45,11 +59,11 @@ var gameBoard = {
     },
     draw: function () {
         var x, y;
-        for (x = 0; x < 10; x++) {
-            for (y = 0; y < 20; y++) {
+        for (x = 1; x < 10; x++) {
+            for (y = 1; y < 20; y++) {
                 if (this.m[y][x] != 0) {
                     this.ctx.fillStyle = this.m[y][x];
-                    this.ctx.strokeStyle = "lightgray";
+                    //this.ctx.strokeStyle = "lightgray";
                     this.ctx.fillRect(x * this.CELL, y * this.CELL, this.CELL, this.CELL);
                 }
             }
