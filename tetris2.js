@@ -5,16 +5,28 @@ function startGame() {
     console.log("starting....");
     nextBlock = new Block();
     newBlock();
+    scoreBoard.init();
     gameBoard.start();
 }
 
+var scoreBoard = {
+    canvas : document.createElement("canvas"),
+    init : function() {
+        this.WIDTH = this.canvas.width = 200;
+        this.HEIGHT = this.canvas.height = 150;
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.CELL = 25;
+        this.ctx = this.canvas.getContext("2d");
+
+    }    
+}
 var gameBoard = {
     //canvas: document.getElementById("gameBoard"),
     canvas : document.createElement("canvas"),
     start: function () {
         //console.log(canvas);
         this.gameSpeed = 1000;
-        this.WIDTH = this.canvas.width = 250;
+        this.WIDTH = this.canvas.width = 300;
         this.HEIGHT = this.canvas.height = 500;
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
         this.CELL = 25;
@@ -36,7 +48,7 @@ var gameBoard = {
         console.log(this.m)
         // alustetaan m niin, että kaikki reunasolut = 1 ja muut 0.
         this.interval = setInterval(sinkBlock, this.gameSpeed);
-        window.addEventListener('keydown', keyHandler, false);
+        window.addEventListener('keydown', keyHandler);
     },
   
     clear: function () {
@@ -59,34 +71,55 @@ var gameBoard = {
     },
     draw: function () {
         var x, y;
-        for (x = 1; x < 10; x++) {
-            for (y = 1; y < 20; y++) {
+        for (x = 1; x < 11; x++) {
+            for (y = 1; y < 21; y++) {
                 if (this.m[y][x] != 0) {
                     this.ctx.fillStyle = this.m[y][x];
                     //this.ctx.strokeStyle = "lightgray";
-                    this.ctx.fillRect(x * this.CELL, y * this.CELL, this.CELL, this.CELL);
+                    this.ctx.fillRect(x * this.CELL + 1, y * this.CELL + 1, this.CELL - 2, this.CELL - 2);
                 }
             }
         }
     
-        // luuppaa m:n läpi ja piirtää pohjalla olevan kasan
     },
     
-    updateM : function(x, y, dx, dy, a) {
+    updateM : function(x, y, dx, dy, a, c) {
 
-        // tässä kutsuu jotain metodia, joka varmistaa että kun palikkaa pyöritetään tai
-        // kun siirretään vasen/oikea, niin ei saa mennä sellasen m:n päälle, jonka arvo != 0
-        // m -matriisissa on game-alueen ulkopuolella kaikki reunasolut arvossa 1, eli
-        // niitten päällekään ei saa mennä, mutta ei tartte erikseen kattoa ettei mee reunasta yli.
+        // toimii jo. 
+        // x, y: nykyinen root-paikka
+        // dx, dy: suhteelliset koordinaatit mihin ollaan siirtämässä x:n ja y:n nähden
+        // a: atoms -array
+        // boolean c: jos true niin laitetaan palikka, jos false niin vain tsekataan
+        // voiko laittaa. Palauttaa 'true' jos voi.
 
+        var ret = true;  // voi laittaa
 
         for (var i = 0; i < 4; i++) {
             this.m[y + a[i][1]][x + a[i][0]] = 0;
         }
-        for (var i = 0; i < 4; i++) {
-            this.m[y + dy + a[i][1]][x + dx + a[i][0]] = currentBlock.color;
+
+        if (c) {
+            for (var i = 0; i < 4; i++) {
+                this.m[y + dy + a[i][1]][x + dx + a[i][0]] = currentBlock.color;
+                
+            }
+            return true;
         }
-    
+
+        // jos missä vaan uudessa paikkaa on jo jotain, ei voi laittaa tähän (ret = false)
+        for (var i = 0; i < 4; i++) {
+            if (this.m[y + dy + a[i][1]][x + dx + a[i][0]] != 0) ret = false;
+            //console.log(y + dy + a[i][1], x + dx + a[i][0])
+            //console.log(this.m[y + dy + a[i][1]][x + dx + a[i][0]])
+        }
+
+        // tänne vain jos tarkastetaan. Joka tapauksessa palikka vanhalle paikalleen
+        for (var i = 0; i < 4; i++) {
+            this.m[y + a[i][1]][x + a[i][0]] = currentBlock.color;
+        }
+
+        return ret;
+        
     },
     stop : function() {
         clearInterval(this.interval);
@@ -108,7 +141,7 @@ function keyHandler(e) {
 
 function newBlock() {
 
-    // if (currentBlock) currentBlock.destroy();
+    // if (currentBlock) currentBlock.destroy();  <---- HUOM!
     currentBlock = nextBlock;
     nextBlock = new Block();
     // näytä nextBlock omassa ruudussaan
@@ -116,7 +149,7 @@ function newBlock() {
 }
 
 function updateGameArea() {
-    console.log("update GA");
+    //console.log("update GA");
     gameBoard.clear();
     //if (gameBoard.key && gameBoard.key == 37) { currentBlock.moveLeft(); }
     //if (gameBoard.key && gameBoard.key == 39) { currentBlock.moveRight(); }
@@ -133,7 +166,7 @@ function sinkBlock() {
 
 function Block() {
 
-    this.r = 2 // Math.rand(6); //tms
+    this.r = Math.floor(Math.random() * 3);
     this.atoms = [];
     this.xPos = 5;
     this.yPos = 2;
@@ -155,18 +188,41 @@ function Block() {
             break;
     }
 
-   this.blockOneDown = function () {
-         gameBoard.updateM(this.xPos, this.yPos++, 0, 1, this.atoms);
-         if (this.yPos == 10) gameBoard.stop();
+    this.blockOneDown = function () {
+       if (gameBoard.updateM(this.xPos, this.yPos, 0, 1, this.atoms, false)) {
+            gameBoard.updateM(this.xPos, this.yPos, 0, 1, this.atoms, true);
+            this.yPos++;
+       } else {
+           if (this.yPos == 2) {
+               console.log(" --- GAME OVER ---");
+               gameBoard.stop();
+           }
+           console.log("new block..");
+           newBlock();
+           //gameBoard.stop();
+       }
          //updateGameArea();
     }
+
     this.moveSideway = function (dx) {
-        // koittaa siirtää kaikkia neljää atomia napsun vasemmalle (dx = -1) tai oikealle (dx = 1). 
-        // jos kaikkien uusien koordinaattien paikalla on 0, niin 
-        // putsataan m:stä vanhat atomien paikat nollaksi ja päivitetään uusi paikka jokaiselle atomille.
+        //console.log(this.xPos)
+        if (gameBoard.updateM(this.xPos, this.yPos, dx, 0, this.atoms, false)) {
+            gameBoard.updateM(this.xPos, this.yPos, dx, 0, this.atoms, true);
+            this.xPos += dx;
+            updateGameArea();            
+        }    
      }
-    //this.moveRight = function () { }
-    this.drop = function () { }
+
+     this.drop = function () { 
+        var y = 1;
+            while (gameBoard.updateM(this.xPos, this.yPos, 0, y, this.atoms, false)) {
+                y++;
+            }    
+            gameBoard.updateM(this.xPos, this.yPos, 0, --y, this.atoms, true);
+            updateGameArea();            
+            newBlock();
+        
+     }
 
     this.rotate = function () { 
         console.log("rotates (couterclockwise)");
